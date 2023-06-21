@@ -3,6 +3,7 @@ from tqdm import tqdm
 from torch.nn.functional import mse_loss
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 class Trainer:
   def __init__(self, device, model, optimizer, result_dir_path):
@@ -34,7 +35,7 @@ class Trainer:
     print(f"Train Epoch {epoch_idx} | MSE_loss : {self.loss}")
     self.loss_lst_tr.append(self.loss)
 
-  def validate(self, dataloader_val, epoch_idx):
+  def validate(self, dataloader_val, epoch_idx, scaler):
     # validate model
     self.model.eval()
     self.loss = 0
@@ -45,9 +46,16 @@ class Trainer:
       loss = mse_loss(y_pred, y)
       self.loss += loss.item()
 
+      # compute score
+      y_pred = y_pred.cpu().detach().numpy()
+      y = y.cpu().detach().numpy()
+      y_pred_ = torch.FloatTensor(scaler.inverse_transform(y_pred))
+      y_ = torch.FloatTensor(scaler.inverse_transform(y))
+      self.score += mse_loss(y_pred_, y_).item()
+
     self.loss = self.loss / len(dataloader_val)
-    self.score = np.sqrt(self.loss)
     self.score = np.sqrt(self.score / len(dataloader_val))
+    
     print(f"Validation Epoch {epoch_idx} | MSE_loss : {self.loss}, RMSE_loss : {self.score}")
     
     self.loss_lst_val.append(self.loss)
