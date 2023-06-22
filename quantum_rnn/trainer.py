@@ -34,7 +34,7 @@ class Trainer:
     opt_params = params_values
     
     for x, y in tqdm(dataloader_tr):
-      start = time.time()
+      # start = time.time()
       x: np.ndarray = x.numpy()
       y: np.ndarray = y.numpy()
 
@@ -48,9 +48,9 @@ class Trainer:
       opt_params: np.ndarray = opt_result.x
       self.loss += loss_func(opt_params)
 
-      elapsed = time.time() - start
-      print(f"Batch 실행 시간: {elapsed:0.2f} seconds")
-      print(f"loss = {opt_result.fun}")
+      # elapsed = time.time() - start
+      # print(f"Batch 실행 시간: {elapsed:0.2f} seconds")
+      # print(f"loss = {opt_result.fun}")
 
     self.loss = self.loss / len(dataloader_tr)
     print(f"Train Epoch {epoch_idx} | MSE_loss : {self.loss}")
@@ -93,7 +93,7 @@ class Trainer:
       plt.yscale('log')
       plt.legend()
       plt.title('loss of each epoch')
-      plt.savefig(dir_path+'/loss.png')
+      plt.savefig(dir_path+'loss.png')
       plt.close()
 
   def make_score_graph(self, score_lst_tr: list, dir_path: str):
@@ -101,5 +101,5 @@ class Trainer:
       x = list(range(0, len(score_lst_tr)))
       plt.plot(x, score_lst_tr)
       plt.title('score of each epoch')
-      plt.savefig(dir_path+'/score.png')
+      plt.savefig(dir_path+'score.png')
       plt.close()
