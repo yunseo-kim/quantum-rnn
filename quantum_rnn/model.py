@@ -54,8 +54,9 @@ class sQRNN():
     self.initial_state = initialize_circuit()
 
     def encode_angle(qc, input_data, qr, n_qubits):
-        # input_data /= np.max(np.abs(input_data),axis=0)
-        encoded_angle = np.arccos(input_data)
+        # input data range: (0,1)
+        input_data = input_data * 2 - 1  # rescaled range: (-1,1)
+        encoded_angle = np.arccos(input_data)  # encoded angle range: (0,PI)
         for i in range(n_qubits):
             qc.ry(encoded_angle, qr[i])
         return qc
