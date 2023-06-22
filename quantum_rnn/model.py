@@ -96,7 +96,7 @@ class sQRNN():
     
         return reg_d, reg_h
 
-    def apply_partial_measurement(qc: QuantumCircuit, qr: QuantumRegister, c_bit: Clbit) -> QuantumCircuit:
+    def apply_partial_measurement(qc: QuantumCircuit, qr: QuantumRegister, c_bit) -> QuantumCircuit:
         qc.measure(qr[0], c_bit)
         return qc
 
@@ -112,7 +112,7 @@ class sQRNN():
         return qc
     
     sqrnn: QuantumCircuit = initialize_circuit()
-    for step in range(self.n_qubits):
+    for step in range(self.n_steps):
         sqrnn = apply_qrb(sqrnn, self.reg_d, self.reg_h, self.params, self.n_qubits, step)
     self.sqrnn = apply_partial_measurement(sqrnn, self.reg_d, self.output_bit)
 
@@ -122,16 +122,21 @@ class sQRNN():
     """
 
 
-  def forward(self, x: np.ndarray, params_values: np.ndarray) -> np.ndarray:
-    self.sqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=True)
-    self.sqrnn.assign_parameters(params_values, inplace=True)
+  def forward(self, input_batch: np.ndarray, params_values: np.ndarray) -> np.ndarray:
+    batch_size = len(input_batch)
+    y: np.ndarray = np.zeros((batch_size,1))
 
-    if self.isReal:
-        self.sqrnn = transpile(self.sqrnn, self.backend) #, initial_layout=initial_layout)
+    for batch_idx in range(batch_size):
+        x = input_batch[batch_idx]
+        sqrnn = self.sqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=False)
+        sqrnn.assign_parameters(params_values, inplace=True)
+
+        if self.isReal:
+            sqrnn = transpile(sqrnn, self.backend) #, initial_layout=initial_layout)
     
-    # We run the simulation and get the counts
-    counts: int = self.backend.run(self.sqrnn, shots=self.n_shots).result().get_counts()
-    result: float = counts / self.n_shots
-    y: np.ndarray = np.array([result])
+         # We run the simulation and get the counts
+        counts: dict = self.backend.run(sqrnn, shots=self.n_shots).result().get_counts()
+        result: float = counts['1'] / self.n_shots
+        y[batch_idx][0] = result
 
     return y
