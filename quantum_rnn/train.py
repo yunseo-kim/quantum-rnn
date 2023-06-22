@@ -1,7 +1,7 @@
 # Importing standard Qiskit libraries
 from qiskit.utils import algorithm_globals
 
-from qiskit.algorithms.optimizers import ADAM
+from qiskit.algorithms.optimizers import SPSA
 
 # qiskit-ibmq-provider has been deprecated.
 # Please see the Migration Guides in https://ibm.biz/provider_migration_guide for more detail.
@@ -53,7 +53,7 @@ for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_spee
   
   # set model and optimizer
   model = sQRNN(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
-  optimizer = ADAM(maxiter=N_EPOCHS, lr=0.03) #, snapshot_dir=result_dir_path+'snapshots/')
+  optimizer = SPSA(maxiter=10)
 
   # get dataset
   dataset_tr, dataset_val = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl).getDataset()
@@ -77,7 +77,7 @@ for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_spee
     # save best result
     if trainer.score == np.min(trainer.score_lst):
       torch.save(optimized_params, result_dir_path+'/best.pt')
-      # torch.save(optimizer.state_dict(), result_dir_path+'/best_optim.pt')
+      # optimizer.save_params(result_dir_path)
 
   elapsed = time.time() - start
   print(f"Fit in {elapsed:0.2f} seconds")

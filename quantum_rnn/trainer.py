@@ -10,6 +10,8 @@ import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
 
+import time
+
 SEED = 23
 np.random.seed(SEED)        # Seed for NumPy random number generator
 rng = default_rng(SEED)
@@ -32,6 +34,7 @@ class Trainer:
     opt_params = params_values
     
     for x, y in tqdm(dataloader_tr):
+      start = time.time()
       x: np.ndarray = x.numpy()
       y: np.ndarray = y.numpy()
 
@@ -41,8 +44,13 @@ class Trainer:
         loss = np.linalg.norm(y_pred - y)
         return loss
 
-      opt_params: np.ndarray = self.optimizer.minimize(loss_func, opt_params)
+      opt_result = self.optimizer.minimize(loss_func, opt_params)
+      opt_params: np.ndarray = opt_result.x
       self.loss += loss_func(opt_params)
+
+      elapsed = time.time() - start
+      print(f"Batch 실행 시간: {elapsed:0.2f} seconds")
+      print(f"loss = {opt_result.fun}")
 
     self.loss = self.loss / len(dataloader_tr)
     print(f"Train Epoch {epoch_idx} | MSE_loss : {self.loss}")
@@ -57,12 +65,12 @@ class Trainer:
       x: np.ndarray = x.numpy()
       y: np.ndarray = y.numpy()
       y_pred: np.ndarray = self.model.forward(x, params_values)
-      self.loss += L2Loss(y_pred, y)[0]
+      self.loss += np.linalg.norm(y_pred - y)
 
       # compute score
       y_pred_: np.ndarray = scaler.inverse_transform(y_pred)
       y_: np.ndarray = scaler.inverse_transform(y)
-      self.score += L2Loss(y_pred_, y_)[0]
+      self.score += np.linalg.norm(y_pred_ - y_)
 
     self.loss = self.loss / len(dataloader_val)
     self.score = np.sqrt(self.score / len(dataloader_val))
