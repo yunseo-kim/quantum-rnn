@@ -53,7 +53,7 @@ class sQRNN():
     
     self.initial_state = initialize_circuit()
 
-    def encode_angle(qc, input_data, qr, n_qubits):
+    def encode_angle(qc: QuantumCircuit, input_data, qr: QuantumRegister, n_qubits: int) -> QuantumCircuit:
         # input data range: (0,1)
         input_data = input_data * 2 - 1  # rescaled range: (-1,1)
         encoded_angle = np.arccos(input_data)  # encoded angle range: (0,PI)
@@ -61,7 +61,7 @@ class sQRNN():
             qc.ry(encoded_angle, qr[i])
         return qc
     
-    def apply_single_qubit_gates(qc, qr, params, n_qubits):
+    def apply_single_qubit_gates(qc: QuantumCircuit, qr: QuantumRegister, params, n_qubits: int) -> QuantumCircuit:
         if not self.isReal:
             qc.barrier()
         for i in range(2*n_qubits):
@@ -70,7 +70,7 @@ class sQRNN():
             qc.rx(params[3*i+2], qr[i])
         return qc
     
-    def apply_two_qubit_gates(qc, qr, params, n_qubits):
+    def apply_two_qubit_gates(qc: QuantumCircuit, qr: QuantumRegister, params, n_qubits: int) -> QuantumCircuit:
         if not self.isReal:
             qc.barrier()
         for i in range(-2*n_qubits, 0):
@@ -79,12 +79,12 @@ class sQRNN():
             qc.cx(qr[i], qr[i+1])
         return qc
     
-    def apply_ansatz(qc, qr, params, n_qubits):
+    def apply_ansatz(qc: QuantumCircuit, qr: QuantumRegister, params, n_qubits: int) -> QuantumCircuit:
         qc = apply_single_qubit_gates(qc, qr, params[0:6*n_qubits], n_qubits)
         qc = apply_two_qubit_gates(qc, qr, params[6*n_qubits:8*n_qubits], n_qubits)
         return qc
     
-    def apply_stagger(reg_d, reg_h, n_qubits):
+    def apply_stagger(reg_d: list, reg_h: list, n_qubits: int) -> tuple[list, list]:
         tmp = reg_d[0]
         for i in range(n_qubits-1):
             reg_d[i] = reg_d[i+1]
@@ -96,22 +96,22 @@ class sQRNN():
     
         return reg_d, reg_h
 
-    def apply_partial_measurement(qc, qr, c_bit):
+    def apply_partial_measurement(qc: QuantumCircuit, qr: QuantumRegister, c_bit: Clbit) -> QuantumCircuit:
         qc.measure(qr[0], c_bit)
         return qc
 
-    def apply_qrb(qc, reg_d, reg_h, params, n_qubits, n_timestep):
-        if n_timestep > 0:
+    def apply_qrb(qc: QuantumCircuit, reg_d: list, reg_h: list, params, n_qubits: int, timestep_idx: int) -> QuantumCircuit:
+        if timestep_idx > 0:
             if not self.isReal:
                 qc.barrier()
             qc.reset(reg_d)
-        qc = encode_angle(qc, self.input_seq[n_timestep], reg_d, n_qubits)
-        qc = apply_ansatz(qc, self.qr, params[n_timestep*8*n_qubits:(n_timestep+1)*8*n_qubits], n_qubits)
+        qc = encode_angle(qc, self.input_seq[timestep_idx], reg_d, n_qubits)
+        qc = apply_ansatz(qc, self.qr, params[timestep_idx*8*n_qubits:(timestep_idx+1)*8*n_qubits], n_qubits)
         (reg_d, reg_h) = apply_stagger(reg_d, reg_h, n_qubits)
         # qc = apply_partial_measurement(qc, reg_d, cr)
         return qc
     
-    sqrnn = initialize_circuit()
+    sqrnn: QuantumCircuit = initialize_circuit()
     for step in range(self.n_qubits):
         sqrnn = apply_qrb(sqrnn, self.reg_d, self.reg_h, self.params, self.n_qubits, step)
     self.sqrnn = apply_partial_measurement(sqrnn, self.reg_d, self.output_bit)
@@ -122,7 +122,7 @@ class sQRNN():
     """
 
 
-  def forward(self, x: np.ndarray, params_values: np.ndarray) -> float:
+  def forward(self, x: np.ndarray, params_values: np.ndarray) -> np.ndarray:
     self.sqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=True)
     self.sqrnn.assign_parameters(params_values, inplace=True)
 
@@ -130,7 +130,8 @@ class sQRNN():
         self.sqrnn = transpile(self.sqrnn, self.backend) #, initial_layout=initial_layout)
     
     # We run the simulation and get the counts
-    counts = self.backend.run(self.sqrnn, shots=self.n_shots).result().get_counts()
-    y = counts / self.n_shots
+    counts: int = self.backend.run(self.sqrnn, shots=self.n_shots).result().get_counts()
+    result: float = counts / self.n_shots
+    y: np.ndarray = np.array([result])
 
     return y
