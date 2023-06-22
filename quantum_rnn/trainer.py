@@ -2,16 +2,13 @@
 from qiskit import QuantumCircuit
 from qiskit.utils import algorithm_globals
 
-#from qiskit_machine_learning.neural_networks import EstimatorQNN
-#from qiskit.primitives import Estimator
-from qiskit_machine_learning.utils.loss_functions import L2Loss
+#from qiskit_machine_learning.utils.loss_functions import L2Loss
 
 from tqdm import tqdm
 import torch
 import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
-import time
 
 SEED = 23
 np.random.seed(SEED)        # Seed for NumPy random number generator
@@ -37,10 +34,11 @@ class Trainer:
     for x, y in tqdm(dataloader_tr):
       x: np.ndarray = x.numpy()
       y: np.ndarray = y.numpy()
-      
-      def loss_func(params_values: np.ndarray) -> float:
+
+      def loss_func(params_values) -> float:
         y_pred: np.ndarray = self.model.forward(x, params_values)
-        loss = L2Loss(y_pred, y)[0]
+        #loss = L2Loss.evaluate(y_pred, y)
+        loss = np.linalg.norm(y_pred - y)
         return loss
 
       opt_params: np.ndarray = self.optimizer.minimize(loss_func, opt_params)
