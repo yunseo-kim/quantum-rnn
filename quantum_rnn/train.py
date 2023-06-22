@@ -5,11 +5,13 @@ from qiskit.algorithms.optimizers import ADAM
 
 # qiskit-ibmq-provider has been deprecated.
 # Please see the Migration Guides in https://ibm.biz/provider_migration_guide for more detail.
-from qiskit_ibm_runtime import QiskitRuntimeService
+# from qiskit_ibm_runtime import QiskitRuntimeService
+from qiskit_aer import AerSimulator
+backend = AerSimulator()
 
 # Loading your IBM Quantum account(s)
-service = QiskitRuntimeService(channel="ibm_quantum")
-backend = service.backend("ibmq_qasm_simulator")
+# service = QiskitRuntimeService(channel="ibm_quantum")
+# backend = service.backend("ibmq_qasm_simulator")
 
 import torch
 import os
@@ -47,11 +49,11 @@ data_csv_path = os.path.join(script_dir, '../data/meteo_data.csv')
 
 for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_speed', 'avg_pressure', 'avg_rel_humidity']:
   # train
-  result_dir_path = os.path.join(script_dir, './result/' + lbl + '/')
+  result_dir_path = os.path.join(script_dir, 'result/' + lbl + '/')
   
   # set model and optimizer
   model = sQRNN(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
-  optimizer = ADAM(maxiter=N_EPOCHS, lr=0.03, snapshot_dir=result_dir_path+'snapshots/')
+  optimizer = ADAM(maxiter=N_EPOCHS, lr=0.03) #, snapshot_dir=result_dir_path+'snapshots/')
 
   # get dataset
   dataset_tr, dataset_val = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl).getDataset()
