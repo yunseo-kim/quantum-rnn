@@ -1,5 +1,5 @@
 # Importing standard Qiskit libraries
-from qiskit import QuantumCircuit, transpile, QuantumRegister, ClassicalRegister, Aer
+from qiskit import QuantumCircuit
 from qiskit.utils import algorithm_globals
 
 #from qiskit_machine_learning.neural_networks import EstimatorQNN
@@ -7,6 +7,7 @@ from qiskit.utils import algorithm_globals
 from qiskit_machine_learning.utils.loss_functions import L2Loss
 
 from tqdm import tqdm
+import torch
 import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
@@ -18,35 +19,31 @@ rng = default_rng(SEED)
 algorithm_globals.random_seed = SEED
 
 class Trainer:
-  def __init__(self, model: QuantumCircuit.quantumcircuit.QuantumCircuit, params_values: np.ndarray, optimizer, result_dir_path):
+  def __init__(self, model: QuantumCircuit, optimizer, result_dir_path: str):
     self.model = model
-    self.params_values = params_values
     self.optimizer = optimizer
-    self.loss = 0
-    self.score = 0
-    self.loss_lst_tr = []
-    self.loss_lst_val = []
-    self.score_lst = []
+    self.loss: float = 0
+    self.score: float = 0
+    self.loss_lst_tr: list = []
+    self.loss_lst_val: list = []
+    self.score_lst: list = []
     self.result_path = result_dir_path
 
-  def train(self, dataloader_tr, epoch_idx) -> np.ndarray:
+  def train(self, params_values: np.ndarray, dataloader_tr, epoch_idx: int) -> np.ndarray:
     # train model
     self.loss = 0
-    opt_params = self.params_values
+    opt_params = params_values
     
     for x, y in tqdm(dataloader_tr):
-      x = x.numpy()
-      y = y.numpy()
+      x: np.ndarray = x.numpy()
+      y: np.ndarray = y.numpy()
       
       def loss_func(params_values: np.ndarray) -> float:
-        y_pred = self.model.forward(x, params_values)
-        loss = L2Loss(y_pred, y)
+        y_pred: np.ndarray = self.model.forward(x, params_values)
+        loss = L2Loss(y_pred, y)[0]
         return loss
 
-      start = time.time()
-      opt_params = self.optimizer.minimize(loss_func, opt_params)
-      elapsed = time.time() - start
-
+      opt_params: np.ndarray = self.optimizer.minimize(loss_func, opt_params)
       self.loss += loss_func(opt_params)
 
     self.loss = self.loss / len(dataloader_tr)
@@ -54,19 +51,20 @@ class Trainer:
     self.loss_lst_tr.append(self.loss)
     return opt_params
 
-  def validate(self, dataloader_val, epoch_idx, scaler):
+  def validate(self, params_values: np.ndarray, dataloader_val, epoch_idx: int, scaler):
     # validate model
     self.loss = 0
+
     for x, y in tqdm(dataloader_val):
-      x = x.numpy()
-      y = y.numpy()
-      y_pred = self.model.forward(x, self.params_values)
-      self.loss += L2Loss(y_pred, y)
+      x: np.ndarray = x.numpy()
+      y: np.ndarray = y.numpy()
+      y_pred: np.ndarray = self.model.forward(x, params_values)
+      self.loss += L2Loss(y_pred, y)[0]
 
       # compute score
-      y_pred_ = scaler.inverse_transform(y_pred)
-      y_ = scaler.inverse_transform(y)
-      self.score += L2Loss(y_pred_, y_)
+      y_pred_: np.ndarray = scaler.inverse_transform(y_pred)
+      y_: np.ndarray = scaler.inverse_transform(y)
+      self.score += L2Loss(y_pred_, y_)[0]
 
     self.loss = self.loss / len(dataloader_val)
     self.score = np.sqrt(self.score / len(dataloader_val))
@@ -80,7 +78,7 @@ class Trainer:
     self.make_loss_graph(self.loss_lst_tr, self.loss_lst_val, self.result_path)
     self.make_score_graph(self.score_lst, self.result_path)
 
-  def make_loss_graph(self, loss_lst_tr, loss_lst_val, dir_path):
+  def make_loss_graph(self, loss_lst_tr: list, loss_lst_val: list, dir_path: str):
       plt.figure()
       x = list(range(0, len(loss_lst_tr)))
       plt.plot(x, loss_lst_tr, label="train")
@@ -92,7 +90,7 @@ class Trainer:
       plt.savefig(dir_path+'/loss.png')
       plt.close()
 
-  def make_score_graph(self, score_lst_tr, dir_path):
+  def make_score_graph(self, score_lst_tr: list, dir_path: str):
       plt.figure()
       x = list(range(0, len(score_lst_tr)))
       plt.plot(x, score_lst_tr)
