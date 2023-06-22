@@ -136,7 +136,11 @@ class sQRNN():
     
          # We run the simulation and get the counts
         counts: dict = self.backend.run(sqrnn, shots=self.n_shots).result().get_counts()
-        result: float = counts['1'] / self.n_shots
+        if '1' in counts:
+            result: float = counts['1'] / self.n_shots
+        else:
+            result = 0
+
         y[batch_idx][0] = result
 
     return y
