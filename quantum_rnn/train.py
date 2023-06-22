@@ -1,7 +1,7 @@
 # Importing standard Qiskit libraries
 from qiskit.utils import algorithm_globals
 
-from qiskit.algorithms.optimizers import SPSA
+from qiskit.algorithms.optimizers import COBYLA
 
 # qiskit-ibmq-provider has been deprecated.
 # Please see the Migration Guides in https://ibm.biz/provider_migration_guide for more detail.
@@ -40,7 +40,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # parameters
 N_EPOCHS = 300
 SEQUENCE_SIZE = 7
-BATCH_SIZE = 4
+BATCH_SIZE = 1
 N_SHOTS = 1000
 N_QUBITS = 3  # Number of qubits allocated to each of two quantum registers. Total Number of Qubits = 2 * N_QUBITS
 N_PARAMS = 8 * N_QUBITS * SEQUENCE_SIZE
@@ -53,7 +53,7 @@ for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_spee
   
   # set model and optimizer
   model = sQRNN(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
-  optimizer = SPSA(maxiter=10)
+  optimizer = COBYLA(maxiter=1)
 
   # get dataset
   dataset_tr, dataset_val = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl).getDataset()
