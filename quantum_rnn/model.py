@@ -21,7 +21,7 @@ class sQRNN():
   """
   Staggered Quantum RNN
   """
-  def __init__(self, backend, isReal, n_shots, n_qubits, n_steps):
+  def __init__(self, backend, isReal: bool, n_shots: int, n_qubits: int, n_steps: int):
     super(sQRNN, self).__init__()
     self.backend = backend
     self.isReal = isReal
@@ -114,11 +114,14 @@ class sQRNN():
     sqrnn = initialize_circuit()
     for step in range(self.n_qubits):
         sqrnn = apply_qrb(sqrnn, self.reg_d, self.reg_h, self.params, self.n_qubits, step)
-    self.sqrnn = apply_partial_measurement(sqrnn, self.reg_d, self.output_bit)
+    sqrnn = apply_partial_measurement(sqrnn, self.reg_d, self.output_bit)
+
+    initial_params = algorithm_globals.random.random(self.n_params)
+    self.sqrnn = sqrnn.assign_parameters(initial_params, inplace=False)
 
 
-  def forward(self, x):
-    self.sqrnn = self.sqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=True)
+  def forward(self, x: np.ndarray) -> float:
+    self.sqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=True)
 
     if self.isReal:
         sqrnn = transpile(sqrnn, self.backend) #, initial_layout=initial_layout)
