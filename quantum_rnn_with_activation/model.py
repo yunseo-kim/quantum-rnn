@@ -54,9 +54,9 @@ class pQRNN_RUS():
     cr_rus = ClassicalRegister(self.N_RUS_QUBITS*self.n_steps, name='cr_rus')
 
     # Adjustable parameters to be optimized in the learning process
-    params = ParameterVector('P', self.N_PARAMS)
-    rus_thetas = ParameterVector('th', self.N_THETAS)
-    input_seq = ParameterVector('x', self.n_steps)
+    self.params = ParameterVector('P', self.N_PARAMS)
+    self.rus_thetas = ParameterVector('th', self.N_THETAS)
+    self.input_seq = ParameterVector('x', self.n_steps)
 
     # Initializing
     def initialize_circuit() -> QuantumCircuit:
@@ -99,7 +99,7 @@ class pQRNN_RUS():
             qc.barrier()
         for i in range(n_data_qubits):
             if i == 0 : qc.measure(qr_data[i], cr_y[n_timestep])
-            else : qc.measure(qr_data[i], cr_x[3*n_timestep+i-1])
+            else : qc.measure(qr_data[i], cr_x[(self.n_qubits-1)*n_timestep+i-1])
         return qc
 
     def apply_RUS_block_1fold(qc, qr_hid, qr_rus, cr_rus, params, n_hid_qubits, n_rus_qubits, n_timestep):
@@ -142,7 +142,7 @@ class pQRNN_RUS():
     def apply_qrb(qc, reg_d, reg_h, reg_ansatz, reg_rus, cr_y, cr_x, cr_rus, params, thetas, n_data_qubits, n_ansatz_qubits, n_hid_qubits, n_rus_qubits, n_timestep):
         if n_timestep > 0:
             qc.reset(reg_d)
-        qc = encode_angle(qc, input_seq[n_timestep], reg_d, n_data_qubits)
+        qc = encode_angle(qc, self.input_seq[n_timestep], reg_d, n_data_qubits)
         qc = apply_ansatz(qc, reg_ansatz, params[4*n_timestep*n_ansatz_qubits:4*(n_timestep+1)*n_ansatz_qubits], n_ansatz_qubits)
         qc = apply_partial_measurement(qc, reg_d, cr_y, cr_x, n_data_qubits, n_timestep)
         qc = apply_RUS_block_1fold(qc, reg_h, reg_rus, cr_rus, thetas, n_hid_qubits, n_rus_qubits, n_timestep)
@@ -150,19 +150,20 @@ class pQRNN_RUS():
     
     self.pqrnn: QuantumCircuit = initialize_circuit()
     for step in range(self.n_steps):
-        self.pqrnn = apply_qrb(self.pqrnn, reg_d, reg_h, reg_ansatz, reg_rus, cr_y, cr_x, cr_rus, params,
-                                  rus_thetas, self.n_qubits, self.N_ANSATZ_QUBITS, self.N_HIDDEN_QUBITS, self.N_RUS_QUBITS, step)
+        self.pqrnn = apply_qrb(self.pqrnn, reg_d, reg_h, reg_ansatz, reg_rus, cr_y, cr_x, cr_rus, self.params,
+                                  self.rus_thetas, self.n_qubits, self.N_ANSATZ_QUBITS, self.N_HIDDEN_QUBITS, self.N_RUS_QUBITS, step)
         (reg_h, reg_rus, reg_ansatz) = swap_hid_and_rus(reg_d, reg_h, reg_rus, reg_ansatz)
 
 
-  def forward(self, input_batch: np.ndarray, params_values: np.ndarray) -> np.ndarray:
+  def forward(self, input_batch: np.ndarray, params_values: np.ndarray, thetas_values: np.ndarray) -> np.ndarray:
     batch_size = len(input_batch)
     y: np.ndarray = np.zeros((batch_size,1))
 
     for batch_idx in range(batch_size):
         x = input_batch[batch_idx]
         pqrnn = self.pqrnn.assign_parameters({self.input_seq[i]:x[i] for i in range(self.n_steps)}, inplace=False)
-        pqrnn.assign_parameters(params_values, inplace=True)
+        print(thetas_values)
+        pqrnn.assign_parameters((params_values, thetas_values), inplace=True)
 
         if self.isReal:
             pqrnn = transpile(pqrnn, self.backend) #, initial_layout=initial_layout)

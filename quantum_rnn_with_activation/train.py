@@ -1,7 +1,7 @@
 # Importing standard Qiskit libraries
 from qiskit.utils import algorithm_globals
 
-from qiskit.algorithms.optimizers import ADAM
+from qiskit.algorithms.optimizers import SPSA
 
 # qiskit-ibmq-provider has been deprecated.
 # Please see the Migration Guides in https://ibm.biz/provider_migration_guide for more detail.
@@ -43,7 +43,14 @@ SEQUENCE_SIZE = 7
 BATCH_SIZE = 4
 N_SHOTS = 1000
 N_QUBITS = 3  # Number of qubits allocated to each of two quantum registers. Total Number of Qubits = 2 * N_QUBITS
-N_PARAMS = 8 * N_QUBITS * SEQUENCE_SIZE
+# Those parameters are determined by above parameters
+N_ANSATZ_QUBITS = 2*N_QUBITS - 1
+N_HIDDEN_QUBITS = N_QUBITS - 1
+N_RUS_QUBITS = N_QUBITS - 1
+N_TOTAL_QUBITS = N_ANSATZ_QUBITS + N_RUS_QUBITS
+N_PARAMS = 8 * N_ANSATZ_QUBITS * SEQUENCE_SIZE
+N_THETAS = N_RUS_QUBITS * SEQUENCE_SIZE
+
 isReal = False
 data_csv_path = os.path.join(script_dir, '../data/meteo_data.csv')
 
@@ -53,7 +60,7 @@ for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_spee
   
   # set model and optimizer
   model = pQRNN_RUS(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
-  optimizer = ADAM(maxiter=N_EPOCHS, lr=0.03) #, snapshot_dir=result_dir_path+'snapshots/')
+  optimizer = SPSA(maxiter=10) #, snapshot_dir=result_dir_path+'snapshots/')
 
   # get dataset
   dataset_tr, dataset_val = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl).getDataset()
@@ -68,11 +75,12 @@ for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_spee
     scaler = pickle.load(f)
 
   initial_params = algorithm_globals.random.random(N_PARAMS)
+  initial_thetas = algorithm_globals.random.random(N_HIDDEN_QUBITS)
   trainer = Trainer(model=model, optimizer=optimizer, result_dir_path=result_dir_path)
 
   start = time.time()
   for epoch_id in range(N_EPOCHS):
-    optimized_params = trainer.train(initial_params, dataloader_tr, epoch_id)
+    optimized_params = trainer.train(initial_params, initial_thetas, dataloader_tr, epoch_id)
     trainer.validate(optimized_params, dataloader_val, epoch_id, scaler)
     # save best result
     if trainer.score == np.min(trainer.score_lst):
