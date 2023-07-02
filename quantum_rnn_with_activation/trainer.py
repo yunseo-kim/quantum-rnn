@@ -9,6 +9,7 @@ import torch
 import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
+from typing import Tuple
 import time
 
 SEED = 23
@@ -17,59 +18,63 @@ rng = default_rng(SEED)
 algorithm_globals.random_seed = SEED
 
 class Trainer:
-  def __init__(self, model: QuantumCircuit, optimizer, result_dir_path: str):
+  def __init__(self, model, optimizer, result_dir_path: str):
     self.model = model
     self.optimizer = optimizer
-    self.loss: float = 0
-    self.score: float = 0
+    self.loss = 0.0
+    self.score = 0.0
     self.loss_lst_tr: list = []
     self.loss_lst_val: list = []
     self.score_lst: list = []
     self.result_path = result_dir_path
+    self.rus_angles = None
 
-  def train(self, thetas_values, params_values: np.ndarray, dataloader_tr, epoch_idx: int) -> np.ndarray:
+  def train(self, params_values: np.ndarray, thetas_values: np.ndarray, dataloader_tr, epoch_idx: int) -> Tuple[np.ndarray, np.ndarray]:
     # train model
     self.loss = 0
     opt_params = params_values
-    
+    rus_angles = thetas_values
+
     for x, y in tqdm(dataloader_tr):
       start = time.time()
-      x: np.ndarray = x.numpy()
-      y: np.ndarray = y.numpy()
+      x = x.numpy()
+      y = y.numpy()
 
-      def loss_func(params_values) -> float:
-        y_pred: np.ndarray = self.model.forward(x, params_values, thetas_values)
+      def loss_func(params_values):
+        y_pred, rus_angles_ = self.model.forward(x, params_values, rus_angles)
+        rus_angles = rus_angles_
         #loss = L2Loss.evaluate(y_pred, y)
         loss = np.linalg.norm(y_pred - y)
         return loss
 
       opt_result = self.optimizer.minimize(loss_func, opt_params)
       opt_params: np.ndarray = opt_result.x
-      self.loss += loss_func(opt_params)
+      self.loss += (loss_func(opt_params))**2
 
       elapsed = time.time() - start
       print(f"Batch 실행 시간: {elapsed:0.2f} seconds")
-      print(f"loss = {opt_result.fun}")
+      print(f"loss = {(opt_result.fun)**2}")
 
-    self.loss = self.loss / len(dataloader_tr)
+    self.loss = np.sqrt(self.loss / len(dataloader_tr))
     print(f"Train Epoch {epoch_idx} | MSE_loss : {self.loss}")
     self.loss_lst_tr.append(self.loss)
-    return opt_params
 
-  def validate(self, params_values: np.ndarray, dataloader_val, epoch_idx: int, scaler):
+    return opt_params, rus_angles
+
+  def validate(self, params_values: np.ndarray, thetas_values: np.ndarray, dataloader_val, epoch_idx: int, scaler):
     # validate model
     self.loss = 0
 
     for x, y in tqdm(dataloader_val):
-      x: np.ndarray = x.numpy()
-      y: np.ndarray = y.numpy()
-      y_pred: np.ndarray = self.model.forward(x, params_values)
-      self.loss += np.linalg.norm(y_pred - y)
+      x = x.numpy()
+      y = y.numpy()
+      y_pred: np.ndarray = self.model.forward(x, params_values, thetas_values)
+      self.loss += (np.linalg.norm(y_pred - y))**2
 
       # compute score
       y_pred_: np.ndarray = scaler.inverse_transform(y_pred)
       y_: np.ndarray = scaler.inverse_transform(y)
-      self.score += np.linalg.norm(y_pred_ - y_)
+      self.score += (np.linalg.norm(y_pred_ - y_))**2
 
     self.loss = self.loss / len(dataloader_val)
     self.score = np.sqrt(self.score / len(dataloader_val))
