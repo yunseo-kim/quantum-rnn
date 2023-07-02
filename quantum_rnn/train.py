@@ -1,7 +1,7 @@
 # Importing standard Qiskit libraries
 from qiskit.utils import algorithm_globals
 
-from qiskit.algorithms.optimizers import SPSA
+from qiskit.algorithms.optimizers import COBYLA
 
 # qiskit-ibmq-provider has been deprecated.
 # Please see the Migration Guides in https://ibm.biz/provider_migration_guide for more detail.

@@ -93,7 +93,7 @@ class Trainer:
       plt.yscale('log')
       plt.legend()
       plt.title('loss of each epoch')
-      plt.savefig(dir_path+'/loss.png')
+      plt.savefig(dir_path+'loss.png')
       plt.close()
 
   def make_score_graph(self, score_lst_tr: list, dir_path: str):
@@ -101,5 +101,5 @@ class Trainer:
       x = list(range(0, len(score_lst_tr)))
       plt.plot(x, score_lst_tr)
       plt.title('score of each epoch')
-      plt.savefig(dir_path+'/score.png')
+      plt.savefig(dir_path+'score.png')
       plt.close()
