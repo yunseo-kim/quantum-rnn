@@ -23,7 +23,7 @@ import time
 from trainer import Trainer
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from classical_rnn.dataset import WeatherDataset
-from model import sQRNN
+from model import pQRNN_RUS
 import pickle
 
 SEED = 23
@@ -38,22 +38,22 @@ script_dir = os.path.dirname(__file__)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # parameters
-N_EPOCHS = 300
+N_EPOCHS = 5
 SEQUENCE_SIZE = 7
-BATCH_SIZE = 1
-N_SHOTS = 1000
+BATCH_SIZE = 4
+N_SHOTS = 500
 N_QUBITS = 3  # Number of qubits allocated to each of two quantum registers. Total Number of Qubits = 2 * N_QUBITS
 N_PARAMS = 8 * N_QUBITS * SEQUENCE_SIZE
 isReal = False
 data_csv_path = os.path.join(script_dir, '../data/meteo_data.csv')
 
-for lbl in ['max_temp', 'min_temp', 'avg_temp', 'max_wind_speed', 'avg_wind_speed', 'avg_pressure', 'avg_rel_humidity']:
+for lbl in ['avg_wind_speed', 'max_wind_speed', 'avg_pressure', 'avg_rel_humidity', 'max_temp', 'min_temp', 'avg_temp']:
   # train
   result_dir_path = os.path.join(script_dir, 'result/' + lbl + '/')
   
   # set model and optimizer
-  model = sQRNN(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
-  optimizer = COBYLA(maxiter=1)
+  model = pQRNN_RUS(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
+  optimizer = SPSA(maxiter=100)
 
   # get dataset
   dataset_tr, dataset_val = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl).getDataset()
