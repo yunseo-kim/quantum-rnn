@@ -24,8 +24,8 @@ SEQUENCE_SIZE = 7
 BATCH_SIZE = 1
 N_SHOTS = 500
 N_QUBITS = 3  # Number of qubits allocated to each of two quantum registers. Total Number of Qubits = 2 * N_QUBITS
-N_PARAMS = 8 * N_QUBITS * SEQUENCE_SIZE
 isReal = False
+
 data_csv_path = os.path.join(script_dir, '../data/meteo_data.csv')
 
 
@@ -50,7 +50,9 @@ for lbl in ['max_wind_speed', 'max_temp', 'min_temp', 'avg_temp', 'avg_wind_spee
     scaler = pickle.load(f)
 
   # get model
-  optim_params = torch.load(os.path.join(script_dir, './result/' + lbl + '/best.pt'))
+  params = torch.load(os.path.join(script_dir, './result/' + lbl + '/best.pt'))
+  optim_params = params["opt_params"]
+  rus_angles = params["rus_angles"]
   
   # plot pred data
   date_list = weather_dataset.getDateData(idx_st=SEQUENCE_SIZE)
@@ -60,14 +62,14 @@ for lbl in ['max_wind_speed', 'max_temp', 'min_temp', 'avg_temp', 'avg_wind_spee
   
   for x, y in tqdm(dataloader_tr):
     x, y = x.detach().numpy(), y.detach().numpy()
-    y_pred = model.forward(x, optim_params)
+    y_pred = model.forward(x, optim_params, rus_angles)
     y_pred = y_pred
     y_pred = scaler.inverse_transform(y_pred)
     pred_list.append(y_pred[0][0])
 
   for x, y in tqdm(dataloader_val):
     x, y = x.detach().numpy(), y.detach().numpy()
-    y_pred = model.forward(x, optim_params)
+    y_pred = model.forward(x, optim_params, rus_angles)
     y_pred = y_pred
     y_pred = scaler.inverse_transform(y_pred)
     pred_list.append(y_pred[0][0])

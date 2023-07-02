@@ -1,13 +1,14 @@
 import torch
 import os, sys
 from torch.utils.data import DataLoader
-from model import pQRNN_RUS
+from model import sQRNN
 import matplotlib.pyplot as plt
 import pickle
 from qiskit_aer import AerSimulator
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from classical_rnn.dataset import WeatherDataset
 from tqdm import tqdm
+import pandas as pd
 
 # script_dir
 script_dir = os.path.dirname(__file__)
@@ -29,9 +30,9 @@ isReal = False
 data_csv_path = os.path.join(script_dir, '../data/meteo_data.csv')
 
 
-for lbl in ['max_wind_speed', 'max_temp', 'min_temp', 'avg_temp', 'avg_wind_speed', 'avg_pressure', 'avg_rel_humidity']:
+for lbl in ['max_temp', 'avg_wind_speed', 'max_wind_speed', 'min_temp', 'avg_temp', 'avg_pressure', 'avg_rel_humidity']:
   # set model and optimizer
-  model = pQRNN_RUS(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
+  model = sQRNN(backend=backend, isReal=isReal, n_shots=N_SHOTS, n_qubits=N_QUBITS, n_steps=SEQUENCE_SIZE)
   
   # get dataset
   weather_dataset = WeatherDataset(SEQUENCE_SIZE, data_csv_path, lbl)
@@ -51,7 +52,7 @@ for lbl in ['max_wind_speed', 'max_temp', 'min_temp', 'avg_temp', 'avg_wind_spee
 
   # get model
   optim_params = torch.load(os.path.join(script_dir, './result/' + lbl + '/best.pt'))
-  
+
   # plot pred data
   date_list = weather_dataset.getDateData(idx_st=SEQUENCE_SIZE)
   pred_list = []
@@ -84,10 +85,14 @@ for lbl in ['max_wind_speed', 'max_temp', 'min_temp', 'avg_temp', 'avg_wind_spee
 
   train_size = len(pred_list)-len(pred_list_val)
   plt.figure()
-  plt.plot(date_list[train_size:], actual_list[train_size:], '--', label="actual")
-  plt.plot(date_list[train_size:], pred_list_val, label="val pred")
+  plt.plot(date_list[train_size:train_size+10], actual_list[train_size:train_size+10], '--', label="actual")
+  plt.plot(date_list[train_size:train_size+10], pred_list_val[:10], label="val pred")
   plt.legend()
   plt.xticks(rotation=45)
   plt.title('Quantum RNN Prediction (train+val)')
   plt.savefig(os.path.join(result_dir_path, 'pred_graph_val.png'))
   plt.close()
+
+  pred_data = {'date':[date.strftime('%Y/%m/%d') for date in date_list], lbl+'_pred':pred_list, lbl:actual_list}
+  df = pd.DataFrame(data=pred_data)
+  df.to_csv(os.path.join(result_dir_path, 'pred_result.csv'))

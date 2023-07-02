@@ -9,7 +9,7 @@ import torch
 import numpy as np
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
-
+from typing import Tuple
 import time
 
 SEED = 23
@@ -27,19 +27,22 @@ class Trainer:
     self.loss_lst_val: list = []
     self.score_lst: list = []
     self.result_path = result_dir_path
+    self.rus_angles = None
 
-  def train(self, params_values: np.ndarray, thetas_values: np.ndarray, dataloader_tr, epoch_idx: int) -> np.ndarray:
+  def train(self, params_values: np.ndarray, thetas_values: np.ndarray, dataloader_tr, epoch_idx: int) -> Tuple[np.ndarray, np.ndarray]:
     # train model
     self.loss = 0
     opt_params = params_values
-    
+    rus_angles = thetas_values
+
     for x, y in tqdm(dataloader_tr):
       start = time.time()
       x = x.numpy()
       y = y.numpy()
 
       def loss_func(params_values):
-        y_pred: np.ndarray = self.model.forward(x, params_values)
+        y_pred, rus_angles_ = self.model.forward(x, params_values, rus_angles)
+        rus_angles = rus_angles_
         #loss = L2Loss.evaluate(y_pred, y)
         loss = np.linalg.norm(y_pred - y)
         return loss
@@ -55,7 +58,8 @@ class Trainer:
     self.loss = np.sqrt(self.loss / len(dataloader_tr))
     print(f"Train Epoch {epoch_idx} | MSE_loss : {self.loss}")
     self.loss_lst_tr.append(self.loss)
-    return opt_params
+
+    return opt_params, rus_angles
 
   def validate(self, params_values: np.ndarray, thetas_values: np.ndarray, dataloader_val, epoch_idx: int, scaler):
     # validate model
@@ -64,7 +68,7 @@ class Trainer:
     for x, y in tqdm(dataloader_val):
       x = x.numpy()
       y = y.numpy()
-      y_pred: np.ndarray = self.model.forward(x, params_values)
+      y_pred: np.ndarray = self.model.forward(x, params_values, thetas_values)
       self.loss += (np.linalg.norm(y_pred - y))**2
 
       # compute score
